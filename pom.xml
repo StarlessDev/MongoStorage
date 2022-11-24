@@ -8,6 +8,7 @@
     <packaging>jar</packaging>
 
     <name>MongoStorage</name>
+    <url>https://github.com/ImJavaCode/MongoStorage</url>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -21,6 +22,7 @@
             <groupId>org.mongodb</groupId>
             <artifactId>mongodb-driver-sync</artifactId>
             <version>4.7.1</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Gson (Json) -->
@@ -37,6 +39,7 @@
             <version>2.0.4</version>
         </dependency>
 
+        <!-- Annotations -->
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
