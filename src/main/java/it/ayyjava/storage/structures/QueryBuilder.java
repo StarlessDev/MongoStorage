@@ -2,6 +2,10 @@ package it.ayyjava.storage.structures;
 
 public class QueryBuilder {
 
+    public static QueryBuilder init() {
+        return new QueryBuilder();
+    }
+
     private final Query query;
 
     private QueryBuilder() {
