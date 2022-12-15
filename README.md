@@ -1,3 +1,2 @@
 ## MongoStorage.java
-Questo progetto segue un concetto semplice: _un oggetto, una collection_.<br>
-Tutti gli oggetti verranno convertiti in formato JSON (usando la libreria Gson) e poi verranno inseriti come documenti in MongoDB.
+Piccola libreria per aiutarmi ad scrivere e aggiornare dati in MongoDB e a convertirli in oggetti facilmente.
