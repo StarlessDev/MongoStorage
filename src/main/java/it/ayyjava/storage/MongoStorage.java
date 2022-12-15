@@ -337,4 +337,8 @@ public final class MongoStorage {
                         .readTimeout(3000, TimeUnit.MILLISECONDS))
                 .build());
     }
+
+    public Gson gson() {
+        return gson;
+    }
 }
