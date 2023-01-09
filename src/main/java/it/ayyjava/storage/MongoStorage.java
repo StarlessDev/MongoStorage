@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class MongoStorage {
 
@@ -183,23 +184,24 @@ public final class MongoStorage {
      */
     public <T> Optional<T> findFirst(@NotNull Class<?> type, @NotNull Bson filter, @Nullable Bson projection) {
         // Oggetto usato per estrarre un oggetto dalla lambda
-        LambdaWrapper<String> lambdaWrapper = new LambdaWrapper<>();
+        AtomicReference<String> string = new AtomicReference<>(null);
         // Inizializza la connessione e prende le informazioni dell'oggetto
         processRequest(type, ((collection, keyInfo) -> {
             // Cerca un documento con filtri e proiezioni passati
             // alla funzione come argomenti
             Document doc = collection.find(filter).projection(projection).first(); // prendi il primo risultato
             if (doc != null) { // Se esiste
-                lambdaWrapper.setValue(doc.toJson());
+                string.set(doc.toJson());
             }
         }));
 
         T result = null; // Valore iniziale
-        if (lambdaWrapper.hasValue()) { // Se il wrapper ha un valore non nullo
+        String value = string.get();
+        if (value != null) { // Se il wrapper ha un valore non nullo
             try {
                 // crea un nuovo oggetto usando gson
                 //noinspection unchecked
-                result = (T) gson.fromJson(lambdaWrapper.getValue(), type);
+                result = (T) gson.fromJson(value, type);
             } catch (JsonSyntaxException e) {
                 logger.error("Could not retrieve result. Types mismatch!");
             }
@@ -320,7 +322,6 @@ public final class MongoStorage {
             logger.info(String.format("Connected to a cluster with %s databases%n", client.listDatabaseNames().iterator().available()));
         } catch (Exception e) {
             logger.error(String.format("Failed to connect to cluster, due to: %s", e.getMessage()));
-            System.exit(-1);
         }
     }
 
