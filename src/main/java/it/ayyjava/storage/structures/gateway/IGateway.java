@@ -15,5 +15,5 @@ public interface IGateway<T> {
 
     Optional<T> load(Query query);
 
-    List<T> lazyLoad();
+    List<T> lazyLoad(Query query);
 }

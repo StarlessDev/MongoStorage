@@ -36,7 +36,7 @@ public abstract class GatewayImpl<T> implements IGateway<T> {
     }
 
     @Override
-    public List<T> lazyLoad() {
+    public List<T> lazyLoad(Query query) {
         return Collections.emptyList();
     }
 
