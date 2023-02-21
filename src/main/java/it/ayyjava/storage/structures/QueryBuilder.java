@@ -6,6 +6,10 @@ public class QueryBuilder {
         return new QueryBuilder();
     }
 
+    public static Query empty() {
+        return new Query();
+    }
+
     private final Query query;
 
     private QueryBuilder() {
