@@ -21,6 +21,11 @@ public class QueryBuilder {
         return this;
     }
 
+    public QueryBuilder add(String key, Number value) {
+        query.getValues().put(key, String.valueOf(value));
+        return this;
+    }
+
     public Query create() {
         return query;
     }
