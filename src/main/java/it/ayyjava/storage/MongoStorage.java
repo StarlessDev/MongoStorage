@@ -338,4 +338,8 @@ public final class MongoStorage {
         Class<?> superClass = objectType.getSuperclass();
         if (superClass != null) searchFields(superClass, fields);
     }
+
+    public MongoClient getClient() {
+        return client;
+    }
 }
