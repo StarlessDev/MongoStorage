@@ -28,6 +28,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -36,7 +37,10 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class MongoStorage {
 
     private final Logger logger;
+    private MongoClient client;
+
     private final String connectionString;
+    private final Map<String, MongoDatabase> cachedDatabases;
     private final Map<String, Map<String, Class<?>>> cachedKeys;
 
     private final Gson gson = new GsonBuilder()
@@ -50,11 +54,27 @@ public final class MongoStorage {
     public MongoStorage(Logger logger, String connectionString) {
         this.logger = logger;
         this.connectionString = connectionString;
-        this.cachedKeys = new HashMap<>();
 
-        // Verifica che la connessione sia avvenuta
-        // con successo
-        verifyConnection();
+        this.cachedDatabases = new ConcurrentHashMap<>();
+        this.cachedKeys = new ConcurrentHashMap<>();
+
+        logger.info(String.format("Connected to a cluster with %s databases%n", client.listDatabaseNames().iterator().available()));
+    }
+
+    public void init() {
+        if (client != null) client.close();
+
+        client = MongoClients.create(MongoClientSettings.builder()
+                .applyConnectionString(new ConnectionString(connectionString))
+                .applyToSocketSettings(builder -> builder
+                        .connectTimeout(3000, TimeUnit.MILLISECONDS)
+                        .readTimeout(3000, TimeUnit.MILLISECONDS))
+                .build());
+    }
+
+    public void close() {
+        client.close();
+        client = null;
     }
 
     /**
@@ -245,17 +265,19 @@ public final class MongoStorage {
             return;
         }
 
-        // Apri la connessione
-        try (MongoClient client = connection()) {
-            // Ottieni il database e la collection
-            // con i dati dell'annotazione
-            MongoDatabase database = client.getDatabase(annotation.database());
-            MongoCollection<Document> collection = database.getCollection(annotation.collection());
-
-            consumer.accept(collection, keys); // ora eseguiamo il codice passato via parametro
-        } catch (IllegalArgumentException e) {
-            logger.error("DB or Collection name are invalid!");
+        // Ottieni il database e la collection
+        // con i dati dell'annotazione
+        MongoDatabase database;
+        if (cachedDatabases.containsKey(annotation.database())) {
+            database = cachedDatabases.get(annotation.database());
+        } else {
+            database = client.getDatabase(annotation.database());
+            cachedDatabases.put(annotation.database(), database);
         }
+
+        MongoCollection<Document> collection = database.getCollection(annotation.collection());
+
+        consumer.accept(collection, keys); // ora eseguiamo il codice passato via parametro
     }
 
     /**
@@ -299,10 +321,13 @@ public final class MongoStorage {
         Map<String, Class<?>> keys = new HashMap<>();
         List<Field> fields = new ArrayList<>();
         searchFields(objectType, fields);
+
         fields.stream()
                 .filter(field -> field.getAnnotation(MongoKey.class) != null)
                 .forEach(field -> keys.put(field.getName(), field.getClass()));
+
         cachedKeys.put(objectType.getName(), keys);
+
         return keys;
     }
 
@@ -311,35 +336,5 @@ public final class MongoStorage {
 
         Class<?> superClass = objectType.getSuperclass();
         if (superClass != null) searchFields(superClass, fields);
-    }
-
-    /**
-     * Controlla che la connessione al database sia
-     * effettuata con successo
-     */
-    private void verifyConnection() {
-        try (MongoClient client = connection()) {
-            logger.info(String.format("Connected to a cluster with %s databases%n", client.listDatabaseNames().iterator().available()));
-        } catch (Exception e) {
-            logger.error(String.format("Failed to connect to cluster, due to: %s", e.getMessage()));
-        }
-    }
-
-    /**
-     * Crea una connessione al database usando la stringa
-     *
-     * @return MongoClient --> connessione al database
-     */
-    private MongoClient connection() {
-        return MongoClients.create(MongoClientSettings.builder()
-                .applyConnectionString(new ConnectionString(connectionString))
-                .applyToSocketSettings(builder -> builder
-                        .connectTimeout(3000, TimeUnit.MILLISECONDS)
-                        .readTimeout(3000, TimeUnit.MILLISECONDS))
-                .build());
-    }
-
-    public Gson gson() {
-        return gson;
     }
 }
