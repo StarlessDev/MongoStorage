@@ -21,7 +21,6 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
@@ -33,6 +32,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class MongoStorage {
 
@@ -57,8 +58,6 @@ public final class MongoStorage {
 
         this.cachedDatabases = new ConcurrentHashMap<>();
         this.cachedKeys = new ConcurrentHashMap<>();
-
-        logger.info(String.format("Connected to a cluster with %s databases%n", client.listDatabaseNames().iterator().available()));
     }
 
     public void init() {
@@ -223,7 +222,7 @@ public final class MongoStorage {
                 //noinspection unchecked
                 result = (T) gson.fromJson(value, type);
             } catch (JsonSyntaxException e) {
-                logger.error("Could not retrieve result. Types mismatch!");
+                logger.log(Level.SEVERE, "Could not retrieve result. Types mismatch!");
             }
         }
         return Optional.ofNullable(result);
@@ -245,14 +244,16 @@ public final class MongoStorage {
 
     // Metodo interno usato per ridurre la ridondanza del codice al minimo
     private void processRequest(Class<?> type, RequestConsumer consumer) {
+        if(client == null) return;
+
         // Otteniamo le informazioni dell' annotazione
         // e facciamo dei check basici
         MongoObject annotation = type.getAnnotation(MongoObject.class);
         if (annotation == null) {
-            logger.warn("This object does not have the MongoObject annotation!");
+            logger.log(Level.WARNING, "This object does not have the MongoObject annotation!");
             return;
         } else if (annotation.database().isBlank() || annotation.collection().isBlank()) {
-            logger.warn("This object has one field blank!");
+            logger.log(Level.WARNING, "This object has one field blank!");
             return;
         }
 
@@ -261,7 +262,7 @@ public final class MongoStorage {
         Map<String, Class<?>> keys = getKeys(type);
         // Facciamo dei check basici
         if (keys.isEmpty()) {
-            logger.warn("There are no keys for this object");
+            logger.log(Level.WARNING, "There are no keys for this object");
             return;
         }
 
