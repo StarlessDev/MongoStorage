@@ -17,6 +17,9 @@ import it.ayyjava.storage.adapters.InstantAdapter;
 import it.ayyjava.storage.adapters.OffsetDateTimeAdapter;
 import it.ayyjava.storage.annotations.MongoKey;
 import it.ayyjava.storage.annotations.MongoObject;
+import it.ayyjava.storage.logging.ILogger;
+import it.ayyjava.storage.logging.JavaLogger;
+import it.ayyjava.storage.logging.SLF4JLogger;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.jetbrains.annotations.NotNull;
@@ -37,7 +40,7 @@ import java.util.logging.Logger;
 
 public final class MongoStorage {
 
-    private final Logger logger;
+    private final ILogger logger;
     private MongoClient client;
 
     private final String connectionString;
@@ -52,7 +55,15 @@ public final class MongoStorage {
             .registerTypeAdapter(OffsetDateTime.class, new OffsetDateTimeAdapter())
             .create();
 
-    public MongoStorage(Logger logger, String connectionString) {
+    public MongoStorage(java.util.logging.Logger logger, String connectionString) {
+        this(new JavaLogger(logger), connectionString);
+    }
+
+    public MongoStorage(org.slf4j.Logger logger, String connectionString) {
+        this(new SLF4JLogger(logger), connectionString);
+    }
+
+    private MongoStorage(ILogger logger, String connectionString) {
         this.logger = logger;
         this.connectionString = connectionString;
 
@@ -222,7 +233,7 @@ public final class MongoStorage {
                 //noinspection unchecked
                 result = (T) gson.fromJson(value, type);
             } catch (JsonSyntaxException e) {
-                logger.log(Level.SEVERE, "Could not retrieve result. Types mismatch!");
+                logger.error("An error occurred while running findFirst on %s class. (Type mismatch)", type.getSimpleName());
             }
         }
         return Optional.ofNullable(result);
@@ -250,10 +261,10 @@ public final class MongoStorage {
         // e facciamo dei check basici
         MongoObject annotation = type.getAnnotation(MongoObject.class);
         if (annotation == null) {
-            logger.log(Level.WARNING, "This object does not have the MongoObject annotation!");
+            logger.warn("The class %s has on @MongoObject annotation!", type.getSimpleName());
             return;
         } else if (annotation.database().isBlank() || annotation.collection().isBlank()) {
-            logger.log(Level.WARNING, "This object has one field blank!");
+            logger.warn("The class %s has blank @MongoObject field(s)!", type.getSimpleName());
             return;
         }
 
@@ -262,7 +273,7 @@ public final class MongoStorage {
         Map<String, Class<?>> keys = getKeys(type);
         // Facciamo dei check basici
         if (keys.isEmpty()) {
-            logger.log(Level.WARNING, "There are no keys for this object");
+            logger.warn("There are no keys for this object");
             return;
         }
 
