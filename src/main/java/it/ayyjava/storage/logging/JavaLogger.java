@@ -1,5 +1,7 @@
 package it.ayyjava.storage.logging;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -12,17 +14,17 @@ public class JavaLogger implements ILogger {
     }
 
     @Override
-    public void info(String message, Object... objects) {
+    public void info(@NotNull String message, Object... objects) {
         logger.info(String.format(message, objects));
     }
 
     @Override
-    public void warn(String message, Object... objects) {
+    public void warn(@NotNull String message, Object... objects) {
         logger.log(Level.WARNING, String.format(message, objects));
     }
 
     @Override
-    public void error(String message, Object... objects) {
+    public void error(@NotNull String message, Object... objects) {
         logger.log(Level.SEVERE, String.format(message, objects));
     }
 }

@@ -20,6 +20,7 @@ import it.ayyjava.storage.annotations.MongoObject;
 import it.ayyjava.storage.logging.ILogger;
 import it.ayyjava.storage.logging.JavaLogger;
 import it.ayyjava.storage.logging.SLF4JLogger;
+import it.ayyjava.storage.logging.SystemLogger;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.jetbrains.annotations.NotNull;
@@ -35,8 +36,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public final class MongoStorage {
 
@@ -54,6 +53,10 @@ public final class MongoStorage {
             .registerTypeAdapter(Instant.class, new InstantAdapter())
             .registerTypeAdapter(OffsetDateTime.class, new OffsetDateTimeAdapter())
             .create();
+
+    public MongoStorage(String connectionString) {
+        this(new SystemLogger(), connectionString);
+    }
 
     public MongoStorage(java.util.logging.Logger logger, String connectionString) {
         this(new JavaLogger(logger), connectionString);
@@ -255,7 +258,7 @@ public final class MongoStorage {
 
     // Metodo interno usato per ridurre la ridondanza del codice al minimo
     private void processRequest(Class<?> type, RequestConsumer consumer) {
-        if(client == null) return;
+        if (client == null) return;
 
         // Otteniamo le informazioni dell' annotazione
         // e facciamo dei check basici
