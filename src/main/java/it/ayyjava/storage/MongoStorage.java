@@ -5,10 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
@@ -83,6 +80,10 @@ public final class MongoStorage {
                         .connectTimeout(3000, TimeUnit.MILLISECONDS)
                         .readTimeout(3000, TimeUnit.MILLISECONDS))
                 .build());
+
+        try (MongoCursor<String> it = client.listDatabaseNames().iterator()) {
+            logger.info("Connected to a MongoDB cluster with %d databases.", it.available());
+        }
     }
 
     public void close() {
