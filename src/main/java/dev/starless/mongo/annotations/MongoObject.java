@@ -1,4 +1,4 @@
-package it.ayyjava.storage.annotations;
+package dev.starless.mongo.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

@@ -1,4 +1,4 @@
-package it.ayyjava.storage.adapters;
+package dev.starless.mongo.adapters;
 
 import com.google.gson.*;
 

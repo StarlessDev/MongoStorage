@@ -1,4 +1,4 @@
-package it.ayyjava.storage;
+package dev.starless.mongo;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -9,21 +9,22 @@ import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
-import it.ayyjava.storage.adapters.DurationAdapter;
-import it.ayyjava.storage.adapters.InstantAdapter;
-import it.ayyjava.storage.adapters.OffsetDateTimeAdapter;
-import it.ayyjava.storage.annotations.MongoKey;
-import it.ayyjava.storage.annotations.MongoObject;
-import it.ayyjava.storage.logging.ILogger;
-import it.ayyjava.storage.logging.JavaLogger;
-import it.ayyjava.storage.logging.SLF4JLogger;
-import it.ayyjava.storage.logging.SystemLogger;
+import dev.starless.mongo.adapters.InstantAdapter;
+import dev.starless.mongo.logging.ILogger;
+import dev.starless.mongo.logging.SLF4JLogger;
+import dev.starless.mongo.logging.SystemLogger;
+import dev.starless.mongo.adapters.DurationAdapter;
+import dev.starless.mongo.adapters.OffsetDateTimeAdapter;
+import dev.starless.mongo.annotations.MongoKey;
+import dev.starless.mongo.annotations.MongoObject;
+import dev.starless.mongo.logging.JavaLogger;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Type;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -38,18 +39,19 @@ public final class MongoStorage {
 
     private final ILogger logger;
     private MongoClient client;
+    private boolean initalized;
 
     private final String connectionString;
     private final Map<String, MongoDatabase> cachedDatabases;
     private final Map<String, Map<String, Class<?>>> cachedKeys;
 
-    private final Gson gson = new GsonBuilder()
+    private Gson gson = null;
+    private final GsonBuilder gsonBuilder = new GsonBuilder()
             .setPrettyPrinting()
             .serializeNulls()
             .registerTypeAdapter(Duration.class, new DurationAdapter())
             .registerTypeAdapter(Instant.class, new InstantAdapter())
-            .registerTypeAdapter(OffsetDateTime.class, new OffsetDateTimeAdapter())
-            .create();
+            .registerTypeAdapter(OffsetDateTime.class, new OffsetDateTimeAdapter());
 
     public MongoStorage(String connectionString) {
         this(new SystemLogger(), connectionString);
@@ -66,14 +68,19 @@ public final class MongoStorage {
     private MongoStorage(ILogger logger, String connectionString) {
         this.logger = logger;
         this.connectionString = connectionString;
+        this.initalized = false;
 
         this.cachedDatabases = new ConcurrentHashMap<>();
         this.cachedKeys = new ConcurrentHashMap<>();
     }
 
+    /**
+     * Inizializza il MongoClient e la instance di Gson
+     */
     public void init() {
         if (client != null) client.close();
 
+        gson = gsonBuilder.create();
         client = MongoClients.create(MongoClientSettings.builder()
                 .applyConnectionString(new ConnectionString(connectionString))
                 .applyToSocketSettings(builder -> builder
@@ -84,11 +91,36 @@ public final class MongoStorage {
         try (MongoCursor<String> it = client.listDatabaseNames().iterator()) {
             logger.info("Connected to a MongoDB cluster with %d databases.", it.available());
         }
+
+        initalized = true;
     }
 
+    /**
+     * Chiude il MongoClient
+     */
     public void close() {
         client.close();
         client = null;
+
+        initalized = false;
+    }
+
+    /**
+     * Permette di registrare un TypeAdapter custom per serializzare
+     * classi non supportate da Gson
+     *
+     * @param type Tipo della classe
+     * @param typeAdapter Classe che deve implementare una di queste classi TypeAdapter, InstanceCreator, JsonSerializer o JsonDeserialize
+     * @return questa classe per concatenare le chiamate a questa funzione
+     */
+    public MongoStorage registerTypeAdapter(Type type, Object typeAdapter) {
+        if(initalized) {
+            logger.error("MongoStorage#registerTypeAdapter needs to be run before initializing the MongoClient!");
+        } else {
+            gsonBuilder.registerTypeAdapter(type, typeAdapter);
+        }
+
+        return this;
     }
 
     /**
@@ -127,6 +159,11 @@ public final class MongoStorage {
      * @return List<T> che contiene solo oggetti con il tipo type
      */
     public <T> List<T> find(@NotNull Class<?> type, @NotNull Bson filter, @Nullable Bson projection) {
+        if(!initalized) {
+            logger.error("Please run MongoStorage#init before querying the database!");
+            return Collections.emptyList();
+        }
+
         // Inizializza la lista
         List<T> data = new ArrayList<>();
 
@@ -152,6 +189,11 @@ public final class MongoStorage {
      * @param update aggiorna il documento se è già presente uno simile
      */
     public boolean store(@NotNull Object o, boolean update) {
+        if(!initalized) {
+            logger.error("Please run MongoStorage#init before querying the database!");
+            return false;
+        }
+
         AtomicBoolean bool = new AtomicBoolean(true);
         // Inizializza la connessione e prende le informazioni dell'oggetto
         processRequest(o.getClass(), (collection, keyInfo) -> {
@@ -217,6 +259,11 @@ public final class MongoStorage {
      * @return Optional che contiene un generico (se è stato trovato)
      */
     public <T> Optional<T> findFirst(@NotNull Class<?> type, @NotNull Bson filter, @Nullable Bson projection) {
+        if(!initalized) {
+            logger.error("Please run MongoStorage#init before querying the database!");
+            return Optional.empty();
+        }
+
         // Oggetto usato per estrarre un oggetto dalla lambda
         AtomicReference<String> string = new AtomicReference<>(null);
         // Inizializza la connessione e prende le informazioni dell'oggetto
@@ -250,6 +297,11 @@ public final class MongoStorage {
      * @return numero degli oggetti rimossi
      */
     public int remove(@NotNull Object o) {
+        if(!initalized) {
+            logger.error("Please run MongoStorage#init before querying the database!");
+            return 0;
+        }
+
         AtomicLong integer = new AtomicLong(0);
         processRequest(o.getClass(), ((collection, keyInfo) ->
                 integer.set(collection.deleteMany(matchFilterFromKeys(o, keyInfo)).getDeletedCount())));

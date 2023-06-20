@@ -1,4 +1,4 @@
-package it.ayyjava.storage.logging;
+package dev.starless.mongo.logging;
 
 import org.jetbrains.annotations.NotNull;
 

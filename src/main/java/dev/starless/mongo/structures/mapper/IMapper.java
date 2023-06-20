@@ -1,6 +1,6 @@
-package it.ayyjava.storage.structures.mapper;
+package dev.starless.mongo.structures.mapper;
 
-import it.ayyjava.storage.structures.Query;
+import dev.starless.mongo.structures.Query;
 
 import java.util.List;
 import java.util.Optional;

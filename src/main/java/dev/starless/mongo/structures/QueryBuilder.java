@@ -1,4 +1,4 @@
-package it.ayyjava.storage.structures;
+package dev.starless.mongo.structures;
 
 public class QueryBuilder {
 

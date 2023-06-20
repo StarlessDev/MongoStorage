@@ -1,13 +1,15 @@
-package it.ayyjava.storage.logging;
+package dev.starless.mongo.logging;
 
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
 
-public class SLF4JLogger implements ILogger {
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class JavaLogger implements ILogger {
 
     private final Logger logger;
 
-    public SLF4JLogger(Logger logger) {
+    public JavaLogger(Logger logger) {
         this.logger = logger;
     }
 
@@ -18,11 +20,11 @@ public class SLF4JLogger implements ILogger {
 
     @Override
     public void warn(@NotNull String message, Object... objects) {
-        logger.warn(String.format(message, objects));
+        logger.log(Level.WARNING, String.format(message, objects));
     }
 
     @Override
     public void error(@NotNull String message, Object... objects) {
-        logger.error(String.format(message, objects));
+        logger.log(Level.SEVERE, String.format(message, objects));
     }
 }

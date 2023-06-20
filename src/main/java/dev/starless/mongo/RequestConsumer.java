@@ -1,4 +1,4 @@
-package it.ayyjava.storage;
+package dev.starless.mongo;
 
 import com.mongodb.client.MongoCollection;
 import org.bson.Document;

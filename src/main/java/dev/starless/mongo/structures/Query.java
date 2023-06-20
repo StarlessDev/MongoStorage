@@ -1,4 +1,4 @@
-package it.ayyjava.storage.structures;
+package dev.starless.mongo.structures;
 
 import java.util.HashMap;
 import java.util.Map;

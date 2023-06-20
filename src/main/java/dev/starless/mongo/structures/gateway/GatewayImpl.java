@@ -1,7 +1,7 @@
-package it.ayyjava.storage.structures.gateway;
+package dev.starless.mongo.structures.gateway;
 
-import it.ayyjava.storage.MongoStorage;
-import it.ayyjava.storage.structures.Query;
+import dev.starless.mongo.MongoStorage;
+import dev.starless.mongo.structures.Query;
 
 import java.util.Collections;
 import java.util.List;
