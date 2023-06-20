@@ -1,4 +1,4 @@
-package dev.starless.mongo.structures;
+package dev.starless.mongo.objects;
 
 public class QueryBuilder {
 

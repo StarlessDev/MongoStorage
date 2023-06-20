@@ -1,6 +1,6 @@
-package dev.starless.mongo.structures.mapper;
+package dev.starless.mongo.objects.mapper;
 
-import dev.starless.mongo.structures.Query;
+import dev.starless.mongo.objects.Query;
 
 import java.util.List;
 import java.util.Optional;

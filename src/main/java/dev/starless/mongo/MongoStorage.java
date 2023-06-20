@@ -9,15 +9,17 @@ import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
-import dev.starless.mongo.adapters.InstantAdapter;
-import dev.starless.mongo.logging.ILogger;
-import dev.starless.mongo.logging.SLF4JLogger;
-import dev.starless.mongo.logging.SystemLogger;
+import com.mongodb.client.model.Updates;
 import dev.starless.mongo.adapters.DurationAdapter;
+import dev.starless.mongo.adapters.InstantAdapter;
 import dev.starless.mongo.adapters.OffsetDateTimeAdapter;
 import dev.starless.mongo.annotations.MongoKey;
 import dev.starless.mongo.annotations.MongoObject;
+import dev.starless.mongo.logging.ILogger;
 import dev.starless.mongo.logging.JavaLogger;
+import dev.starless.mongo.logging.SLF4JLogger;
+import dev.starless.mongo.logging.SystemLogger;
+import dev.starless.mongo.objects.Schema;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.jetbrains.annotations.NotNull;
@@ -44,6 +46,7 @@ public final class MongoStorage {
     private final String connectionString;
     private final Map<String, MongoDatabase> cachedDatabases;
     private final Map<String, Map<String, Class<?>>> cachedKeys;
+    private final List<Schema<?>> schemas;
 
     private Gson gson = null;
     private final GsonBuilder gsonBuilder = new GsonBuilder()
@@ -72,6 +75,7 @@ public final class MongoStorage {
 
         this.cachedDatabases = new ConcurrentHashMap<>();
         this.cachedKeys = new ConcurrentHashMap<>();
+        this.schemas = new ArrayList<>();
     }
 
     /**
@@ -92,6 +96,26 @@ public final class MongoStorage {
             logger.info("Connected to a MongoDB cluster with %d databases.", it.available());
         }
 
+        // Check per i cambiamenti di schema
+        schemas.forEach(schema -> {
+            if (!schema.validate()) {
+                logger.warn("The schema for the collection %s is missing some field(s)", schema.collection());
+                return;
+            }
+
+            MongoDatabase database = getDatabase(schema.database());
+            MongoCollection<Document> collection = database.getCollection(schema.collection());
+
+            schema.entries().forEach(entry -> {
+                // Per ogni entry cerchiamo nel database
+                // dei documenti con questo field mancante
+                collection.find(Filters.exists(entry.fieldName(), false)).forEach(document -> {
+                    // Se effettivamente manca, aggiungiamo noi il valore default
+                    collection.findOneAndUpdate(document.toBsonDocument(), Updates.set(entry.fieldName(), entry.defaultValue()));
+                });
+            });
+        });
+
         initalized = true;
     }
 
@@ -109,15 +133,25 @@ public final class MongoStorage {
      * Permette di registrare un TypeAdapter custom per serializzare
      * classi non supportate da Gson
      *
-     * @param type Tipo della classe
+     * @param type        Tipo della classe
      * @param typeAdapter Classe che deve implementare una di queste classi TypeAdapter, InstanceCreator, JsonSerializer o JsonDeserialize
      * @return questa classe per concatenare le chiamate a questa funzione
      */
     public MongoStorage registerTypeAdapter(Type type, Object typeAdapter) {
-        if(initalized) {
+        if (initalized) {
             logger.error("MongoStorage#registerTypeAdapter needs to be run before initializing the MongoClient!");
         } else {
             gsonBuilder.registerTypeAdapter(type, typeAdapter);
+        }
+
+        return this;
+    }
+
+    public MongoStorage registerSchema(Schema<?> schema) {
+        if (initalized) {
+            logger.error("MongoStorage#registerSchema needs to be run before initializing the MongoClient!");
+        } else {
+            schemas.add(schema);
         }
 
         return this;
@@ -159,7 +193,7 @@ public final class MongoStorage {
      * @return List<T> che contiene solo oggetti con il tipo type
      */
     public <T> List<T> find(@NotNull Class<?> type, @NotNull Bson filter, @Nullable Bson projection) {
-        if(!initalized) {
+        if (!initalized) {
             logger.error("Please run MongoStorage#init before querying the database!");
             return Collections.emptyList();
         }
@@ -189,7 +223,7 @@ public final class MongoStorage {
      * @param update aggiorna il documento se è già presente uno simile
      */
     public boolean store(@NotNull Object o, boolean update) {
-        if(!initalized) {
+        if (!initalized) {
             logger.error("Please run MongoStorage#init before querying the database!");
             return false;
         }
@@ -259,7 +293,7 @@ public final class MongoStorage {
      * @return Optional che contiene un generico (se è stato trovato)
      */
     public <T> Optional<T> findFirst(@NotNull Class<?> type, @NotNull Bson filter, @Nullable Bson projection) {
-        if(!initalized) {
+        if (!initalized) {
             logger.error("Please run MongoStorage#init before querying the database!");
             return Optional.empty();
         }
@@ -297,7 +331,7 @@ public final class MongoStorage {
      * @return numero degli oggetti rimossi
      */
     public int remove(@NotNull Object o) {
-        if(!initalized) {
+        if (!initalized) {
             logger.error("Please run MongoStorage#init before querying the database!");
             return 0;
         }
@@ -335,17 +369,22 @@ public final class MongoStorage {
 
         // Ottieni il database e la collection
         // con i dati dell'annotazione
-        MongoDatabase database;
-        if (cachedDatabases.containsKey(annotation.database())) {
-            database = cachedDatabases.get(annotation.database());
-        } else {
-            database = client.getDatabase(annotation.database());
-            cachedDatabases.put(annotation.database(), database);
-        }
-
+        MongoDatabase database = getDatabase(annotation.database());
         MongoCollection<Document> collection = database.getCollection(annotation.collection());
 
         consumer.accept(collection, keys); // ora eseguiamo il codice passato via parametro
+    }
+
+    private MongoDatabase getDatabase(String name) {
+        MongoDatabase database;
+        if (cachedDatabases.containsKey(name)) {
+            database = cachedDatabases.get(name);
+        } else {
+            database = client.getDatabase(name);
+            cachedDatabases.put(name, database);
+        }
+
+        return database;
     }
 
     /**

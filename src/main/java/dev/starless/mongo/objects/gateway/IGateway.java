@@ -1,6 +1,6 @@
-package dev.starless.mongo.structures.gateway;
+package dev.starless.mongo.objects.gateway;
 
-import dev.starless.mongo.structures.Query;
+import dev.starless.mongo.objects.Query;
 
 import java.util.List;
 import java.util.Optional;
