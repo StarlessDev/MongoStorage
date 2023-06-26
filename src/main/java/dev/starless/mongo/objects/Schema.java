@@ -1,29 +1,35 @@
 package dev.starless.mongo.objects;
 
-import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Stream;
+import dev.starless.mongo.annotations.MongoObject;
 
-public class Schema<T> {
+import java.lang.reflect.Field;
+import java.util.*;
+
+public class Schema {
 
     private final String database;
     private final String collection;
 
-    private final Class<T> clazz;
+    private final Class<?> clazz;
     private final Set<Entry> entries;
 
-    public Schema(String database, String collection, Class<T> clazz) {
-        this.database = database;
-        this.collection = collection;
+    public Schema(Class<?> clazz) {
+        MongoObject annotation = clazz.getAnnotation(MongoObject.class);
+        Objects.requireNonNull(annotation);
+
+        Field[] clazzFields = clazz.getFields();
+        this.database = annotation.database();
+        this.collection = annotation.collection();
 
         this.clazz = clazz;
-        this.entries = new HashSet<>(clazz.getFields().length);
+        this.entries = new HashSet<>(clazzFields.length);
+
+        for (Field field : clazzFields) {
+            entries.add(new Entry(field.getName(), null));
+        }
     }
 
-    public Schema<T> entry(String fieldName, Object defaultValue) {
+    public Schema entry(String fieldName, Object defaultValue) {
         entries.add(new Entry(fieldName, defaultValue));
         return this;
     }

@@ -46,7 +46,7 @@ public final class MongoStorage {
     private final String connectionString;
     private final Map<String, MongoDatabase> cachedDatabases;
     private final Map<String, Map<String, Class<?>>> cachedKeys;
-    private final List<Schema<?>> schemas;
+    private final List<Schema> schemas;
 
     private Gson gson = null;
     private final GsonBuilder gsonBuilder = new GsonBuilder()
@@ -147,7 +147,7 @@ public final class MongoStorage {
         return this;
     }
 
-    public MongoStorage registerSchema(Schema<?> schema) {
+    public MongoStorage registerSchema(Schema schema) {
         if (initalized) {
             logger.error("MongoStorage#registerSchema needs to be run before initializing the MongoClient!");
         } else {
