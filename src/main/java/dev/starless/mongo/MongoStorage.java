@@ -115,6 +115,7 @@ public final class MongoStorage {
                 });
             });
         });
+        logger.info("Validated all documents according to schemas.");
 
         initalized = true;
     }
