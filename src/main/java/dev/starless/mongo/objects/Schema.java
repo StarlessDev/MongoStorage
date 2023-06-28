@@ -19,25 +19,27 @@ public class Schema {
         MongoObject annotation = clazz.getAnnotation(MongoObject.class);
         Objects.requireNonNull(annotation);
 
-        Field[] clazzFields = clazz.getFields();
         this.database = annotation.database();
         this.collection = annotation.collection();
 
         this.clazz = clazz;
-        this.entries = new HashSet<>(clazzFields.length);
-
-        for (Field field : clazzFields) {
-            entries.add(new Entry(field.getName(), null));
-        }
+        this.entries = new HashSet<>();
     }
 
-    public Schema entry(String fieldName, Object defaultValue) {
-        entries.add(new Entry(fieldName, document -> defaultValue));
-        return this;
+    public Schema entry(String currentName, Object defaultValue) {
+        return entry(currentName, null, document -> defaultValue);
     }
 
-    public Schema entry(String fieldName, Function<Document, Object> defaultSupplier) {
-        entries.add(new Entry(fieldName, defaultSupplier));
+    public Schema entry(String currentName, String legacyName, Object defaultValue) {
+        return entry(currentName, legacyName, document -> defaultValue);
+    }
+
+    public Schema entry(String currentName, Function<Document, Object> defaultSupplier) {
+        return entry(currentName, null, defaultSupplier);
+    }
+
+    public Schema entry(String currentName, String legacyName, Function<Document, Object> defaultSupplier) {
+        entries.add(new Entry(currentName, legacyName, defaultSupplier));
         return this;
     }
 
@@ -62,6 +64,10 @@ public class Schema {
         return entries;
     }
 
-    public record Entry(String fieldName, Function<Document, Object> defaultSupplier) {
+    public record Entry(String fieldName, String legacyName, Function<Document, Object> defaultSupplier) {
+
+        public boolean hasLegacyName() {
+            return legacyName != null;
+        }
     }
 }

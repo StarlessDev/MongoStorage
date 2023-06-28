@@ -3,7 +3,9 @@ package dev.starless.mongo;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
+import com.mongodb.BasicDBObject;
 import com.mongodb.ConnectionString;
+import com.mongodb.DBObject;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
@@ -41,7 +43,7 @@ public final class MongoStorage {
 
     private final ILogger logger;
     private MongoClient client;
-    private boolean initalized;
+    private boolean initialized;
 
     private final String connectionString;
     private final Map<String, MongoDatabase> cachedDatabases;
@@ -71,7 +73,7 @@ public final class MongoStorage {
     private MongoStorage(ILogger logger, String connectionString) {
         this.logger = logger;
         this.connectionString = connectionString;
-        this.initalized = false;
+        this.initialized = false;
 
         this.cachedDatabases = new ConcurrentHashMap<>();
         this.cachedKeys = new ConcurrentHashMap<>();
@@ -107,18 +109,36 @@ public final class MongoStorage {
             MongoCollection<Document> collection = database.getCollection(schema.collection());
 
             schema.entries().forEach(entry -> {
+                // Lista che contiene i nomi dei campi da eliminare successivamente
+                Set<String> deprecatedFields = new HashSet<>();
+
                 // Per ogni entry cerchiamo nel database
                 // dei documenti con questo field mancante
                 collection.find(Filters.exists(entry.fieldName(), false)).forEach(document -> {
                     // Se effettivamente manca, aggiungiamo noi il valore default
                     Object defaultValue = entry.defaultSupplier().apply(document);
+                    // Inserisci nella lista il vecchio nome
+                    if (entry.hasLegacyName()) {
+                        deprecatedFields.add(entry.legacyName());
+                    }
+
                     collection.findOneAndUpdate(document.toBsonDocument(), Updates.set(entry.fieldName(), defaultValue));
                 });
+
+                // Cancella tutti i vecchi campi
+                if(!deprecatedFields.isEmpty()) {
+                    BasicDBObject update = new BasicDBObject();
+                    BasicDBObject unset = new BasicDBObject();
+                    deprecatedFields.forEach(id -> unset.put(id, ""));
+
+                    update.put("$unset", unset);
+                    collection.updateMany(Filters.empty(), update);
+                }
             });
         });
         logger.info("Validated all documents according to schemas.");
 
-        initalized = true;
+        initialized = true;
     }
 
     /**
@@ -128,7 +148,7 @@ public final class MongoStorage {
         client.close();
         client = null;
 
-        initalized = false;
+        initialized = false;
     }
 
     /**
@@ -140,7 +160,7 @@ public final class MongoStorage {
      * @return questa classe per concatenare le chiamate a questa funzione
      */
     public MongoStorage registerTypeAdapter(Type type, Object typeAdapter) {
-        if (initalized) {
+        if (initialized) {
             logger.error("MongoStorage#registerTypeAdapter needs to be run before initializing the MongoClient!");
         } else {
             gsonBuilder.registerTypeAdapter(type, typeAdapter);
@@ -150,7 +170,7 @@ public final class MongoStorage {
     }
 
     public MongoStorage registerSchema(Schema schema) {
-        if (initalized) {
+        if (initialized) {
             logger.error("MongoStorage#registerSchema needs to be run before initializing the MongoClient!");
         } else {
             schemas.add(schema);
@@ -195,7 +215,7 @@ public final class MongoStorage {
      * @return List<T> che contiene solo oggetti con il tipo type
      */
     public <T> List<T> find(@NotNull Class<?> type, @NotNull Bson filter, @Nullable Bson projection) {
-        if (!initalized) {
+        if (!initialized) {
             logger.error("Please run MongoStorage#init before querying the database!");
             return Collections.emptyList();
         }
@@ -225,7 +245,7 @@ public final class MongoStorage {
      * @param update aggiorna il documento se è già presente uno simile
      */
     public boolean store(@NotNull Object o, boolean update) {
-        if (!initalized) {
+        if (!initialized) {
             logger.error("Please run MongoStorage#init before querying the database!");
             return false;
         }
@@ -295,7 +315,7 @@ public final class MongoStorage {
      * @return Optional che contiene un generico (se è stato trovato)
      */
     public <T> Optional<T> findFirst(@NotNull Class<?> type, @NotNull Bson filter, @Nullable Bson projection) {
-        if (!initalized) {
+        if (!initialized) {
             logger.error("Please run MongoStorage#init before querying the database!");
             return Optional.empty();
         }
@@ -333,7 +353,7 @@ public final class MongoStorage {
      * @return numero degli oggetti rimossi
      */
     public int remove(@NotNull Object o) {
-        if (!initalized) {
+        if (!initialized) {
             logger.error("Please run MongoStorage#init before querying the database!");
             return 0;
         }
