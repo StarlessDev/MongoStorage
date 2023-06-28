@@ -1,9 +1,11 @@
 package dev.starless.mongo.objects;
 
 import dev.starless.mongo.annotations.MongoObject;
+import org.bson.Document;
 
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.function.Function;
 
 public class Schema {
 
@@ -30,7 +32,12 @@ public class Schema {
     }
 
     public Schema entry(String fieldName, Object defaultValue) {
-        entries.add(new Entry(fieldName, defaultValue));
+        entries.add(new Entry(fieldName, document -> defaultValue));
+        return this;
+    }
+
+    public Schema entry(String fieldName, Function<Document, Object> defaultSupplier) {
+        entries.add(new Entry(fieldName, defaultSupplier));
         return this;
     }
 
@@ -55,6 +62,6 @@ public class Schema {
         return entries;
     }
 
-    public record Entry(String fieldName, Object defaultValue) {
+    public record Entry(String fieldName, Function<Document, Object> defaultSupplier) {
     }
 }

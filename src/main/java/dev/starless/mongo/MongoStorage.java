@@ -111,7 +111,8 @@ public final class MongoStorage {
                 // dei documenti con questo field mancante
                 collection.find(Filters.exists(entry.fieldName(), false)).forEach(document -> {
                     // Se effettivamente manca, aggiungiamo noi il valore default
-                    collection.findOneAndUpdate(document.toBsonDocument(), Updates.set(entry.fieldName(), entry.defaultValue()));
+                    Object defaultValue = entry.defaultSupplier().apply(document);
+                    collection.findOneAndUpdate(document.toBsonDocument(), Updates.set(entry.fieldName(), defaultValue));
                 });
             });
         });
