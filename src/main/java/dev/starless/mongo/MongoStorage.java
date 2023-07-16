@@ -84,7 +84,7 @@ public final class MongoStorage {
      * Inizializza il MongoClient e la instance di Gson
      */
     public void init() {
-        if (client != null) client.close();
+        if (client != null) close();
 
         gson = gsonBuilder.create();
         client = MongoClients.create(MongoClientSettings.builder()
@@ -145,6 +145,8 @@ public final class MongoStorage {
      * Chiude il MongoClient
      */
     public void close() {
+        if (client == null) return;
+
         client.close();
         client = null;
 
