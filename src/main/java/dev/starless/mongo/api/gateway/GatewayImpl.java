@@ -1,7 +1,7 @@
-package dev.starless.mongo.objects.gateway;
+package dev.starless.mongo.api.gateway;
 
 import dev.starless.mongo.MongoStorage;
-import dev.starless.mongo.objects.Query;
+import dev.starless.mongo.api.Query;
 
 import java.util.Collections;
 import java.util.List;

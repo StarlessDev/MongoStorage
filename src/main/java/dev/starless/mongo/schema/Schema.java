@@ -1,11 +1,9 @@
-package dev.starless.mongo.objects;
+package dev.starless.mongo.schema;
 
 import dev.starless.mongo.annotations.MongoObject;
-import org.bson.Document;
 
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.function.Function;
 
 public class Schema {
 
@@ -34,11 +32,11 @@ public class Schema {
         return entry(currentName, legacyName, document -> defaultValue);
     }
 
-    public Schema entry(String currentName, Function<Document, Object> defaultSupplier) {
+    public Schema entry(String currentName, ValueSupplier defaultSupplier) {
         return entry(currentName, null, defaultSupplier);
     }
 
-    public Schema entry(String currentName, String legacyName, Function<Document, Object> defaultSupplier) {
+    public Schema entry(String currentName, String legacyName, ValueSupplier defaultSupplier) {
         entries.add(new Entry(currentName, legacyName, defaultSupplier));
         return this;
     }
@@ -64,7 +62,7 @@ public class Schema {
         return entries;
     }
 
-    public record Entry(String fieldName, String legacyName, Function<Document, Object> defaultSupplier) {
+    public record Entry(String fieldName, String legacyName, ValueSupplier defaultSupplier) {
 
         public boolean hasLegacyName() {
             return legacyName != null;

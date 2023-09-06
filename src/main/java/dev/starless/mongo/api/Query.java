@@ -1,4 +1,4 @@
-package dev.starless.mongo.objects;
+package dev.starless.mongo.api;
 
 import java.util.HashMap;
 import java.util.Map;

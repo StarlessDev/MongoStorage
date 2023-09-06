@@ -5,7 +5,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.mongodb.BasicDBObject;
 import com.mongodb.ConnectionString;
-import com.mongodb.DBObject;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
@@ -21,7 +20,7 @@ import dev.starless.mongo.logging.ILogger;
 import dev.starless.mongo.logging.JavaLogger;
 import dev.starless.mongo.logging.SLF4JLogger;
 import dev.starless.mongo.logging.SystemLogger;
-import dev.starless.mongo.objects.Schema;
+import dev.starless.mongo.schema.Schema;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.jetbrains.annotations.NotNull;
@@ -116,7 +115,7 @@ public final class MongoStorage {
                 // dei documenti con questo field mancante
                 collection.find(Filters.exists(entry.fieldName(), false)).forEach(document -> {
                     // Se effettivamente manca, aggiungiamo noi il valore default
-                    Object defaultValue = entry.defaultSupplier().apply(document);
+                    Object defaultValue = entry.defaultSupplier().supply(document);
                     // Inserisci nella lista il vecchio nome
                     if (entry.hasLegacyName()) {
                         deprecatedFields.add(entry.legacyName());
@@ -126,7 +125,7 @@ public final class MongoStorage {
                 });
 
                 // Cancella tutti i vecchi campi
-                if(!deprecatedFields.isEmpty()) {
+                if (!deprecatedFields.isEmpty()) {
                     BasicDBObject update = new BasicDBObject();
                     BasicDBObject unset = new BasicDBObject();
                     deprecatedFields.forEach(id -> unset.put(id, ""));
