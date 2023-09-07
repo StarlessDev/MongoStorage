@@ -14,13 +14,14 @@ import com.mongodb.client.model.Updates;
 import dev.starless.mongo.adapters.DurationAdapter;
 import dev.starless.mongo.adapters.InstantAdapter;
 import dev.starless.mongo.adapters.OffsetDateTimeAdapter;
-import dev.starless.mongo.annotations.MongoKey;
-import dev.starless.mongo.annotations.MongoObject;
+import dev.starless.mongo.api.annotations.MongoKey;
+import dev.starless.mongo.api.annotations.MongoObject;
 import dev.starless.mongo.logging.ILogger;
 import dev.starless.mongo.logging.JavaLogger;
 import dev.starless.mongo.logging.SLF4JLogger;
 import dev.starless.mongo.logging.SystemLogger;
 import dev.starless.mongo.schema.Schema;
+import dev.starless.mongo.schema.suppliers.ValueSupplier;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.jetbrains.annotations.NotNull;
@@ -114,11 +115,12 @@ public final class MongoStorage {
                 // Per ogni entry cerchiamo nel database
                 // dei documenti con questo field mancante
                 collection.find(Filters.exists(entry.fieldName(), false)).forEach(document -> {
+                    ValueSupplier defaultSupplier = entry.defaultSupplier();
                     // Se effettivamente manca, aggiungiamo noi il valore default
-                    Object defaultValue = entry.defaultSupplier().supply(document);
+                    Object defaultValue = defaultSupplier.supply(document);
                     // Inserisci nella lista il vecchio nome
-                    if (entry.hasLegacyName()) {
-                        deprecatedFields.add(entry.legacyName());
+                    if (entry.hasDeprecatedName()) {
+                        deprecatedFields.add(defaultSupplier.deprecatedKey());
                     }
 
                     collection.findOneAndUpdate(document.toBsonDocument(), Updates.set(entry.fieldName(), defaultValue));
