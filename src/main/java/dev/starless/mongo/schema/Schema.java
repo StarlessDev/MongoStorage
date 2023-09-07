@@ -1,11 +1,11 @@
-package dev.starless.mongo.objects;
+package dev.starless.mongo.schema;
 
-import dev.starless.mongo.annotations.MongoObject;
-import org.bson.Document;
+import dev.starless.mongo.api.annotations.MongoObject;
+import dev.starless.mongo.schema.suppliers.ValueSupplier;
+import dev.starless.mongo.schema.suppliers.impl.ConstantSupplier;
 
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.function.Function;
 
 public class Schema {
 
@@ -26,20 +26,16 @@ public class Schema {
         this.entries = new HashSet<>();
     }
 
-    public Schema entry(String currentName, Object defaultValue) {
-        return entry(currentName, null, document -> defaultValue);
+    public Schema entry(String currentName, Object fixedValue) {
+        return entry(currentName, new ConstantSupplier(null, fixedValue));
     }
 
-    public Schema entry(String currentName, String legacyName, Object defaultValue) {
-        return entry(currentName, legacyName, document -> defaultValue);
+    public Schema entry(String currentName, String deprecatedKey, Object fixedValue) {
+        return entry(currentName, new ConstantSupplier(deprecatedKey, fixedValue));
     }
 
-    public Schema entry(String currentName, Function<Document, Object> defaultSupplier) {
-        return entry(currentName, null, defaultSupplier);
-    }
-
-    public Schema entry(String currentName, String legacyName, Function<Document, Object> defaultSupplier) {
-        entries.add(new Entry(currentName, legacyName, defaultSupplier));
+    public Schema entry(String currentName, ValueSupplier defaultSupplier) {
+        entries.add(new Entry(currentName, defaultSupplier));
         return this;
     }
 
@@ -62,12 +58,5 @@ public class Schema {
 
     public Set<Entry> entries() {
         return entries;
-    }
-
-    public record Entry(String fieldName, String legacyName, Function<Document, Object> defaultSupplier) {
-
-        public boolean hasLegacyName() {
-            return legacyName != null;
-        }
     }
 }
