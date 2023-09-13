@@ -100,11 +100,6 @@ public final class MongoStorage {
 
         // Check per i cambiamenti di schema
         schemas.forEach(schema -> {
-            if (!schema.validate()) {
-                logger.warn("The schema for the collection %s is missing some field(s)", schema.collection());
-                return;
-            }
-
             MongoDatabase database = getDatabase(schema.database());
             MongoCollection<Document> collection = database.getCollection(schema.collection());
 

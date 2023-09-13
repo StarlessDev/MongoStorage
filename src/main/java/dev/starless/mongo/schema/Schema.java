@@ -4,15 +4,15 @@ import dev.starless.mongo.api.annotations.MongoObject;
 import dev.starless.mongo.schema.suppliers.ValueSupplier;
 import dev.starless.mongo.schema.suppliers.impl.ConstantSupplier;
 
-import java.lang.reflect.Field;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 public class Schema {
 
     private final String database;
     private final String collection;
 
-    private final Class<?> clazz;
     private final Set<Entry> entries;
 
     public Schema(Class<?> clazz) {
@@ -22,7 +22,6 @@ public class Schema {
         this.database = annotation.database();
         this.collection = annotation.collection();
 
-        this.clazz = clazz;
         this.entries = new HashSet<>();
     }
 
@@ -37,15 +36,6 @@ public class Schema {
     public Schema entry(String currentName, ValueSupplier defaultSupplier) {
         entries.add(new Entry(currentName, defaultSupplier));
         return this;
-    }
-
-    // Controlla se tutti i fields della classe
-    // hanno una corrispettiva entry nello schema
-    public boolean validate() {
-        List<String> entriesFieldNames = entries.stream().map(Entry::fieldName).toList();
-        return Arrays.stream(clazz.getFields())
-                .map(Field::getName)
-                .allMatch(entriesFieldNames::contains);
     }
 
     public String database() {
