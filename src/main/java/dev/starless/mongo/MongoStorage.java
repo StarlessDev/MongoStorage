@@ -20,7 +20,7 @@ import dev.starless.mongo.logging.ILogger;
 import dev.starless.mongo.logging.JavaLogger;
 import dev.starless.mongo.logging.SLF4JLogger;
 import dev.starless.mongo.logging.SystemLogger;
-import dev.starless.mongo.schema.Schema;
+import dev.starless.mongo.schema.MigrationSchema;
 import dev.starless.mongo.schema.suppliers.ValueSupplier;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -48,7 +48,7 @@ public final class MongoStorage {
     private final String connectionString;
     private final Map<String, MongoDatabase> cachedDatabases;
     private final Map<String, Map<String, Class<?>>> cachedKeys;
-    private final List<Schema> schemas;
+    private final List<MigrationSchema> schemas;
 
     private Gson gson = null;
     private final GsonBuilder gsonBuilder = new GsonBuilder()
@@ -100,7 +100,7 @@ public final class MongoStorage {
 
         // Check per i cambiamenti di schema
         schemas.forEach(schema -> {
-            MongoDatabase database = getDatabase(schema.database());
+            MongoDatabase database = database(schema.database());
             MongoCollection<Document> collection = database.getCollection(schema.collection());
 
             schema.entries().forEach(entry -> {
@@ -157,7 +157,7 @@ public final class MongoStorage {
      * @param typeAdapter Classe che deve implementare una di queste classi TypeAdapter, InstanceCreator, JsonSerializer o JsonDeserialize
      * @return questa classe per concatenare le chiamate a questa funzione
      */
-    public MongoStorage registerTypeAdapter(Type type, Object typeAdapter) {
+    public MongoStorage typeAdapter(Type type, Object typeAdapter) {
         if (initialized) {
             logger.error("MongoStorage#registerTypeAdapter needs to be run before initializing the MongoClient!");
         } else {
@@ -167,7 +167,7 @@ public final class MongoStorage {
         return this;
     }
 
-    public MongoStorage registerSchema(Schema schema) {
+    public MongoStorage migrationSchema(MigrationSchema schema) {
         if (initialized) {
             logger.error("MongoStorage#registerSchema needs to be run before initializing the MongoClient!");
         } else {
@@ -363,8 +363,9 @@ public final class MongoStorage {
         return integer.intValue();
     }
 
-    // Metodo interno usato per ridurre la ridondanza del codice al minimo
-    private void processRequest(Class<?> type, RequestConsumer consumer) {
+    // Metodo che permette di eseguire operazioni sulla collection
+    // che contiene oggetti del tipo type
+    public void processRequest(Class<?> type, RequestConsumer consumer) {
         if (client == null) return;
 
         // Otteniamo le informazioni dell' annotazione
@@ -389,13 +390,13 @@ public final class MongoStorage {
 
         // Ottieni il database e la collection
         // con i dati dell'annotazione
-        MongoDatabase database = getDatabase(annotation.database());
+        MongoDatabase database = database(annotation.database());
         MongoCollection<Document> collection = database.getCollection(annotation.collection());
 
         consumer.accept(collection, keys); // ora eseguiamo il codice passato via parametro
     }
 
-    private MongoDatabase getDatabase(String name) {
+    private MongoDatabase database(String name) {
         MongoDatabase database;
         if (cachedDatabases.containsKey(name)) {
             database = cachedDatabases.get(name);
@@ -465,7 +466,7 @@ public final class MongoStorage {
         if (superClass != null) searchFields(superClass, fields);
     }
 
-    public MongoClient getClient() {
+    public MongoClient client() {
         return client;
     }
 }

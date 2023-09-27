@@ -8,14 +8,14 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-public class Schema {
+public class MigrationSchema {
 
     private final String database;
     private final String collection;
 
     private final Set<Entry> entries;
 
-    public Schema(Class<?> clazz) {
+    public MigrationSchema(Class<?> clazz) {
         MongoObject annotation = clazz.getAnnotation(MongoObject.class);
         Objects.requireNonNull(annotation);
 
@@ -25,15 +25,15 @@ public class Schema {
         this.entries = new HashSet<>();
     }
 
-    public Schema entry(String currentName, Object fixedValue) {
+    public MigrationSchema entry(String currentName, Object fixedValue) {
         return entry(currentName, new ConstantSupplier(null, fixedValue));
     }
 
-    public Schema entry(String currentName, String deprecatedKey, Object fixedValue) {
+    public MigrationSchema entry(String currentName, String deprecatedKey, Object fixedValue) {
         return entry(currentName, new ConstantSupplier(deprecatedKey, fixedValue));
     }
 
-    public Schema entry(String currentName, ValueSupplier defaultSupplier) {
+    public MigrationSchema entry(String currentName, ValueSupplier defaultSupplier) {
         entries.add(new Entry(currentName, defaultSupplier));
         return this;
     }
