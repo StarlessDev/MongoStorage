@@ -143,8 +143,13 @@ public final class MongoStorage {
     public void close() {
         if (client == null) return;
 
+        // Close MongoClient
         client.close();
         client = null;
+
+        // Clear cached resources
+        cachedDatabases.clear();
+        cachedKeys.clear();
 
         initialized = false;
     }
@@ -372,10 +377,10 @@ public final class MongoStorage {
         // e facciamo dei check basici
         MongoObject annotation = type.getAnnotation(MongoObject.class);
         if (annotation == null) {
-            logger.warn("The class %s has on @MongoObject annotation!", type.getSimpleName());
+            logger.warn("The class %s has no @MongoObject annotation!", type.getSimpleName());
             return;
         } else if (annotation.database().isBlank() || annotation.collection().isBlank()) {
-            logger.warn("The class %s has blank @MongoObject field(s)!", type.getSimpleName());
+            logger.warn("The class %s has blank @MongoObject annotated field(s)!", type.getSimpleName());
             return;
         }
 
