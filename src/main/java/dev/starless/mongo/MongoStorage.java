@@ -7,13 +7,11 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.*;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.FindOneAndReplaceOptions;
-import com.mongodb.client.model.ReturnDocument;
-import com.mongodb.client.model.Updates;
+import com.mongodb.client.model.*;
 import dev.starless.mongo.adapters.DurationAdapter;
 import dev.starless.mongo.adapters.InstantAdapter;
 import dev.starless.mongo.adapters.OffsetDateTimeAdapter;
+import dev.starless.mongo.api.IterableProcessor;
 import dev.starless.mongo.api.annotations.MongoKey;
 import dev.starless.mongo.api.annotations.MongoObject;
 import dev.starless.mongo.logging.ILogger;
@@ -160,7 +158,7 @@ public final class MongoStorage {
      *
      * @param type        Tipo della classe
      * @param typeAdapter Classe che deve implementare una di queste classi TypeAdapter, InstanceCreator, JsonSerializer o JsonDeserialize
-     * @return questa classe per concatenare le chiamate a questa funzione
+     * @return Questa instanza di MongoStorage
      */
     public MongoStorage typeAdapter(Type type, Object typeAdapter) {
         if (initialized) {
@@ -172,6 +170,13 @@ public final class MongoStorage {
         return this;
     }
 
+    /**
+     * Registra un nuovo oggetto per la migrazione dei documenti
+     * da uno schema all'altro
+     *
+     * @param schema Oggetto MigrationSchema contenente le informazioni necessarie
+     * @return Questa instanza di MongoStorage
+     */
     public MongoStorage migrationSchema(MigrationSchema schema) {
         if (initialized) {
             logger.error("MongoStorage#registerSchema needs to be run before initializing the MongoClient!");
@@ -182,30 +187,16 @@ public final class MongoStorage {
         return this;
     }
 
-    /**
-     * Trova tutti gli oggetti che corrispondono
-     * ai filtri passati tramite parametro
-     * (ignora filtri e projections, quindi
-     * preleverà tutti i documenti dal database)
-     *
-     * @param type Tipo della classe da cercare
-     * @return List<T> che contiene solo oggetti con il tipo type
-     */
-    public <T> List<T> find(Class<?> type) {
-        return find(type, Filters.empty(), null);
+    public <T> List<T> find(Class<? extends T> type) {
+        return find(type, Filters.empty());
     }
 
-    /**
-     * Trova tutti gli oggetti che corrispondono
-     * ai filtri passati tramite parametro
-     * (ignorando le projections)
-     *
-     * @param type   Tipo della classe da cercare
-     * @param filter Filtri
-     * @return List<T> che contiene solo oggetti con il tipo type
-     */
-    public <T> List<T> find(Class<?> type, Bson filter) {
-        return find(type, filter, null);
+    public <T> List<T> find(Class<? extends T> type, Bson filter) {
+        return find(type, IterableProcessor.passthrough, filter);
+    }
+
+    public <T> List<T> find(Class<? extends T> type, IterableProcessor processor) {
+        return find(type, processor, Filters.empty());
     }
 
     /**
@@ -213,11 +204,13 @@ public final class MongoStorage {
      * ai filtri passati tramite parametro
      *
      * @param type       Tipo della classe da cercare
-     * @param filter     Filtri
-     * @param projection Altri filtri lmao
+     * @param filter     Filtri di Mongo da applicare
+     * @param processor  Operazioni da eseguire direttamente sull'output di Mongo prima della serializzazione
      * @return List<T> che contiene solo oggetti con il tipo type
      */
-    public <T> List<T> find(@NotNull Class<?> type, @NotNull Bson filter, @Nullable Bson projection) {
+    public <T> List<T> find(@NotNull Class<? extends T> type,
+                            @NotNull IterableProcessor processor,
+                            @NotNull Bson filter) {
         if (!initialized) {
             logger.error("Please run MongoStorage#init before querying the database!");
             return Collections.emptyList();
@@ -227,16 +220,26 @@ public final class MongoStorage {
         List<T> data = new ArrayList<>();
 
         // Inizializza la connessione e prende le informazioni dell'oggetto
-        processRequest(type, (collection, keyInfo) ->
-                // Trova tutti i risultati
-                collection.find(filter).projection(projection).forEach(document -> {
-                    try {
-                        @SuppressWarnings("unchecked") T obj = (T) gson.fromJson(document.toJson(), type); // Cast
-                        data.add(obj); // e aggiungi il risultato alla lista
-                    } catch (JsonSyntaxException | ClassCastException ignored) {
-                        // Non credo che serva (almeno a me) gestire l'eccezzione
-                    }
-                }));
+        processRequest(type, (collection, keyInfo) -> {
+            // Trova tutti i risultati e applica le modifiche
+            // richieste dall'utente
+            FindIterable<Document> iterableDocuments = processor.process(collection.find(filter));
+
+            // Serializza i documenti e aggiungili alla lista
+            iterableDocuments.forEach(document -> {
+                try {
+                    // Dobbiamo creare un oggetto ausiliario, altrimenti
+                    // non è chiaro il tipo ritornato da gson e non
+                    // possiamo aggiungerlo alla lista
+                    T obj = gson.fromJson(document.toJson(), type);
+
+                    // Aggiorna la lista
+                    data.add(obj);
+                } catch (JsonSyntaxException | ClassCastException ignored) {
+                    // Non credo che serva (almeno a me) gestire l'eccezzione
+                }
+            });
+        });
         return data;
     }
 
@@ -282,30 +285,12 @@ public final class MongoStorage {
         return bool.get();
     }
 
-    /**
-     * Recupera un oggetto da un documento
-     * presente in MongoDB
-     * (ignorando i filtri e le projections, quindi
-     * preleverà tutti i documenti)
-     *
-     * @param type Tipo dell'oggetto
-     * @return Optional che contiene un generico (se è stato trovato)
-     */
-    public <T> Optional<T> findFirst(@NotNull Class<?> type) {
-        return findFirst(type, Filters.empty(), null);
+    public <T> Optional<T> findFirst(@NotNull Class<? extends T> type) {
+        return findFirst(type, Filters.empty());
     }
 
-    /**
-     * Recupera un oggetto da un documento
-     * presente in MongoDB
-     * (ignorando le projections)
-     *
-     * @param type   Tipo dell'oggetto
-     * @param filter Criterio di ricerca da usare
-     * @return Optional che contiene un generico (se è stato trovato)
-     */
-    public <T> Optional<T> findFirst(@NotNull Class<?> type, @NotNull Bson filter) {
-        return findFirst(type, filter, null);
+    public <T> Optional<T> findFirst(@NotNull Class<? extends T> type, @NotNull Bson filter) {
+        return findFirst(type, IterableProcessor.passthrough, filter);
     }
 
     /**
@@ -314,10 +299,12 @@ public final class MongoStorage {
      *
      * @param type       Tipo dell'oggetto
      * @param filter     Criterio di ricerca da usare
-     * @param projection Altri criteri di ricerca
+     * @param processor  Operazioni da eseguire direttamente sull'output di Mongo prima della serializzazione
      * @return Optional che contiene un generico (se è stato trovato)
      */
-    public <T> Optional<T> findFirst(@NotNull Class<?> type, @NotNull Bson filter, @Nullable Bson projection) {
+    public <T> Optional<T> findFirst(@NotNull Class<? extends T> type,
+                                     @NotNull IterableProcessor processor,
+                                     @NotNull Bson filter) {
         if (!initialized) {
             logger.error("Please run MongoStorage#init before querying the database!");
             return Optional.empty();
@@ -329,7 +316,7 @@ public final class MongoStorage {
         processRequest(type, ((collection, keyInfo) -> {
             // Cerca un documento con filtri e proiezioni passati
             // alla funzione come argomenti
-            Document doc = collection.find(filter).projection(projection).first(); // prendi il primo risultato
+            Document doc = processor.process(collection.find(filter)).first(); // prendi il primo risultato
             if (doc != null) { // Se esiste
                 string.set(doc.toJson());
             }
@@ -340,8 +327,7 @@ public final class MongoStorage {
         if (value != null) { // Se il wrapper ha un valore non nullo
             try {
                 // crea un nuovo oggetto usando gson
-                //noinspection unchecked
-                result = (T) gson.fromJson(value, type);
+                result = gson.fromJson(value, type);
             } catch (JsonSyntaxException e) {
                 logger.error("An error occurred while running findFirst on %s class. (Type mismatch)", type.getSimpleName());
             }
