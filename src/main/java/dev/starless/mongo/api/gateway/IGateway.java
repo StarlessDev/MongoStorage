@@ -13,7 +13,7 @@ public interface IGateway<T> {
 
     int remove(T value);
 
-    Optional<T> load(Query query);
+    Optional<T> loadOne(Query query);
 
-    List<T> lazyLoad(Query query);
+    List<T> loadMany(Query query);
 }

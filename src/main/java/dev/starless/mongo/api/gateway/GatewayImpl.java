@@ -31,12 +31,12 @@ public abstract class GatewayImpl<T> implements IGateway<T> {
     }
 
     @Override
-    public Optional<T> load(Query query) {
+    public Optional<T> loadOne(Query query) {
         return Optional.empty();
     }
 
     @Override
-    public List<T> lazyLoad(Query query) {
+    public List<T> loadMany(Query query) {
         return Collections.emptyList();
     }
 
