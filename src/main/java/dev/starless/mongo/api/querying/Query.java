@@ -1,4 +1,4 @@
-package dev.starless.mongo.api;
+package dev.starless.mongo.api.querying;
 
 import java.util.HashMap;
 import java.util.Map;

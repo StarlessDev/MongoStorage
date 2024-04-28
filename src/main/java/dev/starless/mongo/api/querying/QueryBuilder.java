@@ -1,4 +1,4 @@
-package dev.starless.mongo.api;
+package dev.starless.mongo.api.querying;
 
 public class QueryBuilder {
 

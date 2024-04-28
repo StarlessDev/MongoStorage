@@ -1,6 +1,6 @@
 package dev.starless.mongo.api.gateway;
 
-import dev.starless.mongo.api.Query;
+import dev.starless.mongo.api.querying.Query;
 
 import java.util.List;
 import java.util.Optional;
