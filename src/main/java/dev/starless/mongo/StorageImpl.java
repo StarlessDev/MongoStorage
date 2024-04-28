@@ -68,10 +68,10 @@ public final class StorageImpl implements MongoStorage {
 
         // Check for schema changes
         schemas.forEach(schema -> {
-            MongoDatabase database = getDatabase(schema.database());
-            MongoCollection<Document> collection = database.getCollection(schema.collection());
+            MongoDatabase database = getDatabase(schema.getDatabase());
+            MongoCollection<Document> collection = database.getCollection(schema.getCollection());
 
-            schema.entries().forEach(entry -> {
+            schema.getEntries().forEach(entry -> {
                 // This list contains the name of fields which will be eliminated later
                 Set<String> deprecatedFields = new HashSet<>();
 

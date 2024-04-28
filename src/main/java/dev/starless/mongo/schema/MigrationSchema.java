@@ -38,15 +38,15 @@ public class MigrationSchema {
         return this;
     }
 
-    public String database() {
+    public String getDatabase() {
         return database;
     }
 
-    public String collection() {
+    public String getCollection() {
         return collection;
     }
 
-    public Set<Entry> entries() {
+    public Set<Entry> getEntries() {
         return entries;
     }
 }

@@ -13,7 +13,7 @@ public interface IMapper<T> {
 
     int delete(T value);
 
-    Optional<T> search(Query query);
+    Optional<T> getOne(Query query);
 
-    List<T> bulkSearch(Query query);
+    List<T> getMany(Query query);
 }
