@@ -4,13 +4,13 @@ import com.mongodb.client.FindIterable;
 import org.bson.Document;
 
 /**
- * Interface che permette di effettuare operazioni direttamente
- * sull'oggetto FindIterable che ritorna Mongo nelle operazioni di find
+ * This interfaced allows to perform operations directly on the FindIterable object
+ * returned by Mongo in find operations
  */
 public interface IterableProcessor {
 
     /**
-     * Questo processor ritorna il parametro senza modificarlo
+     * This processor instance does not modify the FindIterable object
      */
     IterableProcessor passthrough = iterable -> iterable;
 
