@@ -1,6 +1,6 @@
 package dev.starless.mongo.api.gateway;
 
-import dev.starless.mongo.StorageImpl;
+import dev.starless.mongo.api.MongoStorage;
 import dev.starless.mongo.api.querying.Query;
 
 import java.util.Collections;
@@ -9,9 +9,9 @@ import java.util.Optional;
 
 public abstract class GatewayImpl<T> implements IGateway<T> {
 
-    private final StorageImpl storage;
+    private final MongoStorage storage;
 
-    public GatewayImpl(StorageImpl storage) {
+    public GatewayImpl(MongoStorage storage) {
         this.storage = storage;
     }
 
@@ -40,7 +40,7 @@ public abstract class GatewayImpl<T> implements IGateway<T> {
         return Collections.emptyList();
     }
 
-    protected StorageImpl storage() {
+    protected MongoStorage storage() {
         return storage;
     }
 }
