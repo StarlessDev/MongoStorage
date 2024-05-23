@@ -37,6 +37,7 @@ public final class StorageImpl implements MongoStorage {
 
     private final Map<String, MongoDatabase> cachedDatabases;
     private final Map<String, Map<String, Class<?>>> cachedKeys;
+    private final Map<String, String> overriddenCollectionNames;
     private final List<MigrationSchema> schemas;
 
     StorageImpl(String connectionString, ILogger logger, Gson gson, List<MigrationSchema> schemas) {
@@ -48,6 +49,7 @@ public final class StorageImpl implements MongoStorage {
 
         this.cachedDatabases = new ConcurrentHashMap<>();
         this.cachedKeys = new ConcurrentHashMap<>();
+        this.overriddenCollectionNames = new HashMap<>();
         this.schemas = schemas;
     }
 
@@ -61,10 +63,7 @@ public final class StorageImpl implements MongoStorage {
                         .connectTimeout(3000, TimeUnit.MILLISECONDS)
                         .readTimeout(3000, TimeUnit.MILLISECONDS))
                 .build());
-
-        try (MongoCursor<String> it = client.listDatabaseNames().iterator()) {
-            logger.info("Connected to a MongoDB cluster with %d databases.", it.available());
-        }
+        logger.info("Connected to MongoDB");
 
         // Check for schema changes
         schemas.forEach(schema -> {
@@ -118,6 +117,16 @@ public final class StorageImpl implements MongoStorage {
         cachedKeys.clear();
 
         initialized = false;
+    }
+
+    @Override
+    public void overrideCollectionName(Class<?> type, String name) {
+        if (type.getAnnotation(MongoObject.class) == null) {
+            logger.warn("Cannot override the collection name: the class %s has no @MongoObject annotation!", type.getSimpleName());
+            return;
+        }
+
+        overriddenCollectionNames.put(type.getName(), name);
     }
 
     @Override
@@ -260,7 +269,7 @@ public final class StorageImpl implements MongoStorage {
             return null;
         }
 
-        return getDatabase(annotation.database()).getCollection(annotation.collection());
+        return getDatabase(annotation.database()).getCollection(overriddenCollectionNames.getOrDefault(type.getName(), annotation.collection()));
     }
 
     private MongoDatabase getDatabase(String name) {

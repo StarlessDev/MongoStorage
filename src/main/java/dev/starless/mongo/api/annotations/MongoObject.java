@@ -11,5 +11,5 @@ public @interface MongoObject {
 
     String database();
 
-    String collection();
+    String collection() default "";
 }

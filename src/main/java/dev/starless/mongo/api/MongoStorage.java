@@ -29,6 +29,15 @@ public interface MongoStorage {
     void close();
 
     /**
+     * Overrides the collection name for a specific {@link dev.starless.mongo.api.annotations.MongoObject}
+     * annotated class.
+     *
+     * @param type {@link Class Class<?>} object
+     * @param name new collection name
+     */
+    void overrideCollectionName(Class<?> type, String name);
+
+    /**
      * Convenience method which calls {@link StorageImpl#find(Class, IterableProcessor, Bson)}
      * without filtering or doing operations on the output.
      *
