@@ -68,7 +68,7 @@ public final class StorageImpl implements MongoStorage {
         // Check for schema changes
         schemas.forEach(schema -> {
             MongoDatabase database = getDatabase(schema.getDatabase());
-            MongoCollection<Document> collection = database.getCollection(schema.getCollection());
+            MongoCollection<Document> collection = database.getCollection(getCollectionName(schema.getClazzName(), schema.getCollection()));
 
             schema.getEntries().forEach(entry -> {
                 // This list contains the name of fields which will be eliminated later
@@ -269,7 +269,13 @@ public final class StorageImpl implements MongoStorage {
             return null;
         }
 
-        return getDatabase(annotation.database()).getCollection(overriddenCollectionNames.getOrDefault(type.getName(), annotation.collection()));
+        return getDatabase(annotation.database()).getCollection(getCollectionName(type.getName(), annotation.collection()));
+    }
+
+    private String getCollectionName(String typeName, String defaultCollection) {
+        String value = overriddenCollectionNames.getOrDefault(typeName, defaultCollection);
+        if (value.isBlank()) throw new RuntimeException("The class " + typeName + " has an empty collection name!");
+        return value;
     }
 
     private MongoDatabase getDatabase(String name) {

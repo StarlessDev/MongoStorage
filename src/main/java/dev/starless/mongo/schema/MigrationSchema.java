@@ -10,6 +10,7 @@ import java.util.Set;
 
 public class MigrationSchema {
 
+    private final String clazzName;
     private final String database;
     private final String collection;
 
@@ -19,6 +20,7 @@ public class MigrationSchema {
         MongoObject annotation = clazz.getAnnotation(MongoObject.class);
         Objects.requireNonNull(annotation);
 
+        this.clazzName = clazz.getName();
         this.database = annotation.database();
         this.collection = annotation.collection();
 
@@ -48,5 +50,9 @@ public class MigrationSchema {
 
     public Set<Entry> getEntries() {
         return entries;
+    }
+
+    public String getClazzName() {
+        return clazzName;
     }
 }
